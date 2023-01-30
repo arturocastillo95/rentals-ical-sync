@@ -96,7 +96,9 @@ class Rentals_Ical_Sync_Admin {
 		 * class.
 		 */
 
-		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/rentals-ical-sync-admin.js', array( 'jquery' ), $this->version, false );
+		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/rentals-ical-sync-admin.js', array( 'jquery' ), $this->version, true );
+		wp_enqueue_script('moment', 'https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js', array('jquery'), '2.29.4', false);
+		wp_enqueue_script('fullcalendar', 'https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.0/index.global.min.js', array('jquery'), '6.1.0', false);
 
 	}
 

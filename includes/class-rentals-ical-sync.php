@@ -122,8 +122,10 @@ class Rentals_Ical_Sync {
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'public/class-rentals-ical-sync-public.php';
 
-		$this->loader = new Rentals_Ical_Sync_Loader();
+		// Load iCalcreator
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/icalcreator/autoload.php';
 
+		$this->loader = new Rentals_Ical_Sync_Loader();
 	}
 
 	/**
@@ -157,6 +159,7 @@ class Rentals_Ical_Sync {
 	 * @since    1.0.0
 	 * @access   private
 	 */
+
 	private function define_admin_hooks() {
 
 		$plugin_admin = new Rentals_Ical_Sync_Admin( $this->get_plugin_name(), $this->get_version() );
@@ -167,6 +170,9 @@ class Rentals_Ical_Sync {
 		
 		// Add the main menu item for the plugin
 		$this->loader->add_action( 'admin_menu', $plugin_admin, 'add_menu' );
+
+		// Add the full calendar scripts and styles
+		// $this->loader->add_action( 'admin_enqueue_scripts', 'fullcalendar_enqueue_scripts' );
 
 	}
 
@@ -227,3 +233,4 @@ class Rentals_Ical_Sync {
 	}
 
 }
+ 

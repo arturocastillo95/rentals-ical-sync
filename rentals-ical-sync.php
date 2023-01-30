@@ -80,40 +80,81 @@ function run_rentals_ical_sync() {
 
 }
 
+function combine_consecutive_dates( $dates ) {
+	// Sort the dates by the check in date
+	usort( $dates, function( $a, $b ) {
+		return $a['check_in'] - $b['check_in'];
+	} );
+	// Combine the dates that are consecutive
+	$combined_dates = array();
+	$combined_dates[] = $dates[0];
+	$dates_count = count( $dates );
+	for ( $i = 1; $i < $dates_count; $i++ ) {
+		$combined_dates_count = count( $combined_dates );
+		$combined_dates_last_index = $combined_dates_count - 1;
+		$combined_dates_last = $combined_dates[ $combined_dates_last_index ];
+		$combined_dates_last_check_out = $combined_dates_last['check_out'];
+		$dates_current = $dates[ $i ];
+		$dates_current_check_in = $dates_current['check_in'];
+		// Check if the current check in is the next day of the last check out
+		if ( $dates_current_check_in == $combined_dates_last_check_out + 86400 ) {
+			// If it is then combine the dates
+			$combined_dates[ $combined_dates_last_index ]['check_out'] = $dates_current['check_out'];
+		} else {
+			// If it is not then add the current date to the combined dates
+			$combined_dates[] = $dates_current;
+		}
+	}
+	return $combined_dates;
+}
+
 function rentals_ical_sync_admin_page() {
 	// Get all the posts from the database with table st_rental
 	global $wpdb;
 	$rentals = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}posts WHERE post_type = 'st_rental'" );
 	// Show the list
 	echo '<h1>SyncRentals</h1>';
-	echo '<p>Here you can see all the listings in the database.</p>';
+	echo '<p>Here you can see the availability of the listing</p>';
 	// Check if the submit button was clicked
 	if ( isset( $_POST['submit'] ) ) {
-		// Check if the form nonce is valid
-		if ( ! wp_verify_nonce( $_POST['rentals_ical_sync_nonce'], 'rentals_ical_sync' ) ) {
-			echo '<p class="error">Invalid nonce</p>';
-		} else {
-			// Check if the rental_id exists in the rentals array
-			if ( in_array( $_POST['rental_id'], wp_list_pluck( $rentals, 'ID' ) ) ) {
-				// Load all the rentals name in a dropdown list
-				echo '<form action="" method="post">';
-				echo '<select name="rental_id">';
-				foreach ( $rentals as $rental ) {
-					echo '<option value="' . $rental->ID . '">' . $rental->post_title . '</option>';
-				}
-				echo '</select>';
-				echo '<input type="submit" name="submit" value="Sync" />';
-				echo '</form>';
-			} else {
-				echo '<p class="error">Invalid rental ID</p>';
-			}
+		// Get the rental object selected in the dropdown list
+		$rental_id = $_POST['rental_id'];
+	
+		// Get all the related st_rental_availability from the database with the rental id only get the ones that have status as unavailable
+		$rental_availability = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}st_rental_availability WHERE post_id = $rental_id AND status = 'unavailable'", ARRAY_A );
+		// Combine in chunks with the earliest and latest date that are consecutive dates
+		$rental_availability = combine_consecutive_dates( $rental_availability );
+		// Output to the console the array
+		echo '<script>console.log(' . json_encode( $rental_availability ) . ');</script>';
+
+		// Display the rental name and the id
+		echo '<h2>' . get_the_title( $rental_id ) . '</h2>';
+		echo '<p>Listing ID: ' . $rental_id . '</p>';
+		// Create a calendar of all the st_rental_availability
+		echo '<h2>Availability</h2>';
+		echo '<div id="calendar"></div>';
+		// Create the javascript array with all the st_rental_availability
+		echo '<script>';
+		echo 'var events = [';
+		foreach ( $rental_availability as $availability ) {
+			echo '{';
+			echo 'title: "Unavailable",';
+			// Convert the unix time stamp to the fullcalendar format
+			echo 'start: "' . date( 'Y-m-d', $availability['check_in'] ) . '",';
+			echo 'end: "' . date( 'Y-m-d', $availability['check_out'] ) . '",';
+			echo '},';
 		}
+		echo '];';
+		echo 'console.log(events);';
+		echo '</script>';
 	} else {
 		// Load all the rentals name in a dropdown list
 		echo '<form action="" method="post">';
 		echo '<select name="rental_id">';
-		foreach ( $rentals as $rental ) {
-			echo '<option value="' . $rental->ID . '">' . $rental->post_title . '</option>';
+		if ( $rentals ) {
+			foreach ( $rentals as $rental ) {
+				echo '<option value="' . $rental->ID . '">' . $rental->post_title . '</option>';
+			}
 		}
 		echo '</select>';
 		echo '<input type="submit" name="submit" value="Sync" />';
